@@ -4,6 +4,7 @@ import time
 from urlparse import urlparse
 from urlparse import parse_qs
 import re
+import json
 
 
 class HittaSpider(scrapy.Spider):
@@ -35,7 +36,7 @@ class HittaSpider(scrapy.Spider):
 
         try:
             maploc = response.css('[class="address-go-to-map-container plain"]')[0].css("a::attr(href)").extract_first()
-            latlong = parse_qs(urlparse(maploc).query)[u'sat']
+            latlong = parse_qs(urlparse(maploc).query)[u'sat'][0]
         except:
             print "not able to get latlong "
             latlong = None;
@@ -55,6 +56,7 @@ class HittaSpider(scrapy.Spider):
             'brf_key':        orgNo
         }
 
+
         if orgNo is not None:
             next_req = scrapy.Request("https://api.hitta.se/info/v3/brf/" + orgNo, callback=self.parse_brf_info, meta={'item': result})
             yield next_req
@@ -65,11 +67,26 @@ class HittaSpider(scrapy.Spider):
     def parse_brf_info(self, response):
         item = response.meta['item']
         try:
-            item['extra'] = response.body_as_unicode()
-            yield item
-        except:
+            item['extra'] = json.loads(response.body_as_unicode())
+
+            if item['map'] is not None:
+                next_req = scrapy.Request("https://api.hitta.se/search/v7/map/location/nearby/" + item['map'], callback=self.parse_map_nearby, meta={'item': item})
+                yield next_req
+            else:
+                yield item
+        except KeyError:
+            item['extra'] = None
             yield item
 
+    def parse_map_nearby(self, response):
+        try:
+            item = response.meta['item']
+            #curl https://api.hitta.se/search/v7/map/location/nearby/59.30132498434748:18.00762993231096 | jq '.[] | .locations | .features | .[] | .properties | .address | .streetview | .uri'
+            item['img_url'] = json.loads(response.body_as_unicode())['georesult']['locations']['features'][0]['properties']['address']['streetview']['uri']
+            yield item
+        except KeyError:
+            item['img_url'] = None
+            yield item
 
 
 def get_phone_num(res):
