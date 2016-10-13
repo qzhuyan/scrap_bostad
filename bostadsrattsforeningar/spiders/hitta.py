@@ -5,15 +5,42 @@ from urlparse import urlparse
 from urlparse import parse_qs
 import re
 import json
+import urllib
 
+Municipality = ['Norrbotten',
+                'Västerbotten',
+                'Jämtland',
+                'Västernorrland',
+                'Gävleborg',
+                'Dalarna',
+                'Värmland',
+                'Örebro',
+                'Västmanland',
+                'Uppsala',
+                'Stockholm',
+                'Södermanland',
+                'Skaraborg',
+                'Östergötland',
+                'Göteborg',
+                'Älvsborg',
+                'Jönköping',
+                'Kalmar',
+                'Gotland',
+                'Halland',
+                'Kronoberg',
+                'Blekinge',
+                'Skåne' ]
 
 class HittaSpider(scrapy.Spider):
     name = "hitta"
     allowed_domains = ["hitta.se"]
-    start_urls = (
-        'https://www.hitta.se/s%C3%B6k?vad=Bostadsr%C3%A4ttsf%C3%B6reningar+Stockholm',
-    )
 
+    # start_urls = (
+    #     'https://www.hitta.se/s%C3%B6k?vad=Bostadsr%C3%A4ttsf%C3%B6reningar+Stockholm',
+    # )
+
+    start_urls = tuple(map(lambda x: 'https://www.hitta.se/s%C3%B6k?vad=Bostadsr%C3%A4ttsf%C3%B6reningar+' + urllib.quote(x), Municipality))
+    print start_urls
     def parse(self, response):
         for href in response.css('[class="link--neutral result-row__link"]::attr(href)'):
             company_page = response.urljoin(href.extract())
